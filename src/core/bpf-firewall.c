@@ -660,7 +660,7 @@ int bpf_firewall_supported(void) {
          * b) whether the unified hierarchy is being used
          * c) the BPF implementation in the kernel supports BPF LPM TRIE maps, which we require
          * d) the BPF implementation in the kernel supports BPF_PROG_TYPE_CGROUP_SKB programs, which we require
-         * e) the BPF implementation in the kernel supports the BPF_PROG_ATTACH call, which we require
+         * e) the BPF implementation in the kernel supports the BPF_PROG_DETACH call, which we require
          *
          */
 
@@ -714,7 +714,7 @@ int bpf_firewall_supported(void) {
          * is turned off at kernel compilation time. This sucks of course: why does it allow us to create a cgroup BPF
          * program if we can't do a thing with it later?
          *
-         * We detect this case by issuing the BPF_PROG_ATTACH bpf() call with invalid file descriptors: if
+         * We detect this case by issuing the BPF_PROG_DETACH bpf() call with invalid file descriptors: if
          * CONFIG_CGROUP_BPF is turned off, then the call will fail early with EINVAL. If it is turned on the
          * parameters are validated however, and that'll fail with EBADF then. */
 
@@ -724,15 +724,15 @@ int bpf_firewall_supported(void) {
                 .attach_bpf_fd = -1,
         };
 
-        if (bpf(BPF_PROG_ATTACH, &attr, sizeof(attr)) < 0) {
+        if (bpf(BPF_PROG_DETACH, &attr, sizeof(attr)) < 0) {
                 if (errno != EBADF) {
-                        log_debug_errno(errno, "Didn't get EBADF from BPF_PROG_ATTACH, BPF firewalling is not supported: %m");
+                        log_debug_errno(errno, "Didn't get EBADF from BPF_PROG_DETACH, BPF firewalling is not supported: %m");
                         return supported = BPF_FIREWALL_UNSUPPORTED;
                 }
 
                 /* YAY! */
         } else {
-                log_debug("Wut? Kernel accepted our invalid BPF_PROG_ATTACH call? Something is weird, assuming BPF firewalling is broken and hence not supported.");
+                log_debug("Wut? Kernel accepted our invalid BPF_PROG_DETACH call? Something is weird, assuming BPF firewalling is broken and hence not supported.");
                 return supported = BPF_FIREWALL_UNSUPPORTED;
         }
 
@@ -748,7 +748,7 @@ int bpf_firewall_supported(void) {
                 .attach_flags = BPF_F_ALLOW_MULTI,
         };
 
-        if (bpf(BPF_PROG_ATTACH, &attr, sizeof(attr)) < 0) {
+        if (bpf(BPF_PROG_DETACH, &attr, sizeof(attr)) < 0) {
                 if (errno == EBADF) {
                         log_debug_errno(errno, "Got EBADF when using BPF_F_ALLOW_MULTI, which indicates it is supported. Yay!");
                         return supported = BPF_FIREWALL_SUPPORTED_WITH_MULTI;
@@ -761,7 +761,7 @@ int bpf_firewall_supported(void) {
 
                 return supported = BPF_FIREWALL_SUPPORTED;
         } else {
-                log_debug("Wut? Kernel accepted our invalid BPF_PROG_ATTACH+BPF_F_ALLOW_MULTI call? Something is weird, assuming BPF firewalling is broken and hence not supported.");
+                log_debug("Wut? Kernel accepted our invalid BPF_PROG_DETACH+BPF_F_ALLOW_MULTI call? Something is weird, assuming BPF firewalling is broken and hence not supported.");
                 return supported = BPF_FIREWALL_UNSUPPORTED;
         }
 }
